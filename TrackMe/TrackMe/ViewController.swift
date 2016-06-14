@@ -53,7 +53,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
     }
     
     override func viewWillDisappear(animated: Bool) {
-        locationManager.stopUpdatingLocation()
+        // locationManager.stopUpdatingLocation()
     }
     
     // MARK: CLLocationManager Delegates
@@ -80,6 +80,10 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
             var polyline = MKPolyline(coordinates: &a, count: a.count)
             
             mapView.addOverlay(polyline)
+            
+            // Stop updating location, set timer to start updating again in 10 seconds
+            locationManager.stopUpdatingLocation()
+            timer = NSTimer.scheduledTimerWithTimeInterval(10, target: self, selector: #selector(turnOnLocationManager), userInfo: nil, repeats: false)
             
         }
         
@@ -125,9 +129,9 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
 //        timer = NSTimer.scheduledTimerWithTimeInterval(60, target: self, selector: #selector(turnOnLocationManager), userInfo: nil, repeats: false)
     }
     
-//    func turnOnLocationManager() {
-//        locationManager.startUpdatingLocation()
-//    }
+    func turnOnLocationManager() {
+        locationManager.startUpdatingLocation()
+    }
     
     // MARK: MKMapView Delegates
     func mapView(mapView: MKMapView, rendererForOverlay overlay: MKOverlay) -> MKOverlayRenderer {
@@ -179,6 +183,8 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
 
             
             walkButton.setTitle("Start Walk", forState: .Normal)
+            
+            
             
         }
     
