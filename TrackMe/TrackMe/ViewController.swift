@@ -2,6 +2,14 @@
 //  ViewController.swift
 //  TrackMe
 //
+//  Project to figure out how to determine users location, track their travels, and add
+//  a map overlay to show their route.
+//
+//  Optionally want to:
+//  Create screen shot of map with overlay when done with walk
+//  Plan a walk route given a user set time
+//  Drop pins along route, get street address given coordinates
+//
 //  Created by Steve Graff on 6/12/16.
 //  Copyright © 2016 Steve Graff. All rights reserved.
 //
@@ -17,10 +25,11 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
     @IBOutlet weak var walkButton: UIButton!
     
     var locationManager: CLLocationManager!
-    
     var locations = [CLLocation]()
     
-    var timer = NSTimer()
+    var updateLocationTimer = NSTimer()
+    
+    var isMapZoomed:Bool = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -29,105 +38,86 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.delegate = self
         
-        // Ask for auth to access location
-        var status = CLLocationManager.authorizationStatus()
-        if status == .NotDetermined || status == .Denied || status == .AuthorizedWhenInUse {
+        // Ask for auth to access user location
+        let locationAuthStatus = CLLocationManager.authorizationStatus()
+        if locationAuthStatus == .NotDetermined || locationAuthStatus == .Denied || locationAuthStatus == .AuthorizedWhenInUse {
             // display alert indicating authorization required
             locationManager.requestAlwaysAuthorization()
             locationManager.requestWhenInUseAuthorization()
         }
         
-        locationManager.startUpdatingLocation()
+        // Get current location
+        locationManager.requestLocation()
 
         // MapView setup to show user location
-        mapView.delegate = self
-        mapView.showsUserLocation = true
-        mapView.mapType = MKMapType.Standard
-        mapView.userTrackingMode = MKUserTrackingMode.Follow
+        self.mapView.delegate = self
+        self.mapView.showsUserLocation = true
+        self.mapView.mapType = MKMapType.Standard
+        self.mapView.userTrackingMode = MKUserTrackingMode.Follow
+        
+//        self.mapView.frame.standardized
+//
+//        let noLocation = CLLocationCoordinate2D()
+//        let span = MKCoordinateSpanMake(0.005, 0.005)
+//        let viewRegion = MKCoordinateRegion(center: noLocation, span: span)
+//        self.mapView.setRegion(viewRegion, animated: true)
     }
     
     
+    func zoomToUserLocationAnimated(animated: Bool) {
+        self.mapView.setRegion(MKCoordinateRegionMakeWithDistance((mapView.userLocation.location?.coordinate)!, 200, 200), animated: animated)
+    }
+    
     override func viewWillAppear(animated: Bool) {
-//        locationManager.startUpdatingLocation()
-//        locationManager.startUpdatingHeading()
     }
     
     override func viewWillDisappear(animated: Bool) {
-        // locationManager.stopUpdatingLocation()
     }
     
+    
+    //
     // MARK: CLLocationManager Delegates
+    //
+    
     func locationManager(manager: CLLocationManager, didChangeAuthorizationStatus status: CLAuthorizationStatus) {
         locationManager.stopUpdatingLocation()
 
     }
     
+    func locationManager(manager: CLLocationManager, didFailWithError error: NSError) {
+        print("Someone set up us the bomb! \(error)")
+    }
+    
     
     func locationManager(manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         
+        if !isMapZoomed {
+            zoomToUserLocationAnimated(true)
+            isMapZoomed = true
+        }
+        
         self.locations.append(locations[0] as CLLocation)
         
-        let spanX = 0.007
-        let spanY = 0.007
-        var newRegion = MKCoordinateRegion(center: mapView.userLocation.coordinate, span: MKCoordinateSpanMake(spanX, spanY))
+//        let spanX = 0.007
+//        let spanY = 0.007
+//        var newRegion = MKCoordinateRegion(center: mapView.userLocation.coordinate, span: MKCoordinateSpanMake(spanX, spanY))
+        
         if (self.locations.count > 1) {
-            var sourceIndex = self.locations.count - 1
-            var destinationIndex = self.locations.count - 2
+            let sourceIndex = self.locations.count - 1
+            let destinationIndex = self.locations.count - 2
             
-            let c1 = self.locations[sourceIndex].coordinate
-            let c2 = self.locations[destinationIndex].coordinate
-            var a = [c1, c2]
-            var polyline = MKPolyline(coordinates: &a, count: a.count)
+            let firstCoordinate = self.locations[sourceIndex].coordinate
+            let secondCoordinate = self.locations[destinationIndex].coordinate
+            var routeCoordinates = [firstCoordinate, secondCoordinate]
+            let walkRoutePolyline = MKPolyline(coordinates: &routeCoordinates, count: routeCoordinates.count)
             
-            mapView.addOverlay(polyline)
+            mapView.addOverlay(walkRoutePolyline)
             
             // Stop updating location, set timer to start updating again in 10 seconds
             locationManager.stopUpdatingLocation()
-            timer = NSTimer.scheduledTimerWithTimeInterval(10, target: self, selector: #selector(turnOnLocationManager), userInfo: nil, repeats: false)
-            
+            updateLocationTimer = NSTimer.scheduledTimerWithTimeInterval(10, target: self, selector: #selector(turnOnLocationManager), userInfo: nil, repeats: false)
         }
-        
-        
-//        
-//        for location in locations {
-//            if self.locations.count > 0 {
-//                var coords = [CLLocationCoordinate2D]()
-//                coords.append(self.locations.last!.coordinate)
-//                coords.append(location.coordinate)
-//                
-//                mapView.addOverlay(MKPolyline(coordinates: &coords, count: coords.count))
-//                
-//            }
-//            
-//        }
-        
-//        let userLocation:CLLocation = locations.last!
-//        print("Location is lat: \(userLocation.coordinate.latitude), long: \(userLocation.coordinate.longitude)")
-        
-    
-    
-//    func locationManager(manager: CLLocationManager, didUpdateToLocation newLocation: CLLocation, fromLocation oldLocation: CLLocation) {
-//        
-//        // print("present location: \(newLocation.coordinate.latitude), \(newLocation.coordinate.longitude)")
-//        
-//
-//            
-//            // Conditional added to handle issue with simulator
-//            // where initial coords are always (0,0)
-//            // if oldCoordinates.latitude != 0 {
-//            // var area = [oldCoordinates, newCoordinates]
-//            // var polyline = MKPolyline(coordinates: &area, count: area.count)
-//            // mapView.addOverlay(polyline)
-//            // }
-//
-//        }
-        
-//        // Stop updating location
-//        locationManager.stopUpdatingLocation()
-//        
-//        // Schedule to start updating in 60 seconds
-//        timer = NSTimer.scheduledTimerWithTimeInterval(60, target: self, selector: #selector(turnOnLocationManager), userInfo: nil, repeats: false)
-    }
+        }
     
     func turnOnLocationManager() {
         locationManager.startUpdatingLocation()
@@ -146,14 +136,15 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
     }
     
     
+    // TODO: Figure out how to use this to allow user to drop annotation (dog event: poop, peed, behavior like 'sit'
     // MARK: Add annotations to map
     func addAnnotationsOnMap(locationToPoint: CLLocation) {
-        var annotation = MKPointAnnotation()
+        let annotation = MKPointAnnotation()
         annotation.coordinate = locationToPoint.coordinate
-        var geoCoder = CLGeocoder()
+        let geoCoder = CLGeocoder()
         geoCoder.reverseGeocodeLocation(locationToPoint, completionHandler: { (placemarks, error) -> Void in
             if let placemarks = placemarks where placemarks.count > 0 {
-                var placemark = placemarks[0]
+                let placemark = placemarks[0]
                 var addressDictionary = placemark.addressDictionary
                 annotation.title = addressDictionary!["Name"] as? String
                 self.mapView.addAnnotation(annotation)
@@ -162,7 +153,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
     }
 
     
-    // Start/Stop tracking movement
+    // Start or Stop tracking location
     @IBAction func walkButton(sender: AnyObject) {
         
         if walkButton.titleLabel!.text == "Start Walk" {
@@ -184,11 +175,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
             
             walkButton.setTitle("Start Walk", forState: .Normal)
             
-            
-            
         }
-    
-
     }
 
     override func didReceiveMemoryWarning() {
